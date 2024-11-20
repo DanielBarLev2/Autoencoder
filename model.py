@@ -137,10 +137,14 @@ def train_model(dataset_path,
 
     print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
 
+    current_num_epochs = len(train_losses)
 
-def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='cpu', img_count=10):
+    return current_num_epochs, best_val_loss, model_path,
+
+def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='cpu', img_count=10,
+                             num_epochs=20, batch_size=16, learning_rate=0.001, min_loss=None):
     """
-    Visualizes the reconstruction of images using the trained Autoencoder model.
+    Visualizes the reconstruction of images using the trained Autoencoder model and saves the plot to the "results" folder.
 
     :param dataset_path: str
         Path to the dataset folder containing images.
@@ -152,11 +156,19 @@ def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='c
         Device to use ('cpu' or 'cuda').
     :param img_count: int, optional (default=10)
         Number of images to visualize.
+    :param num_epochs: int, optional (default=20)
+        Total number of epochs the model was trained for.
+    :param batch_size: int, optional (default=16)
+        Batch size used during training.
+    :param learning_rate: float, optional (default=0.001)
+        Learning rate used during training.
+    :param min_loss: float, optional
+        Minimum validation loss achieved during training.
     """
-    # Load validation DataLoader
+    os.makedirs("results", exist_ok=True)
+
     _, val_loader = create_dataloader(dataset_path, batch_size=img_count)
 
-    # Load the model
     model = Autoencoder(latent_dim=latent_dim).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
@@ -168,10 +180,11 @@ def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='c
     with torch.no_grad():
         reconstructed = model(images)
 
+    # Denormalize images
     images = images.cpu() * 0.5 + 0.5
     reconstructed = reconstructed.cpu() * 0.5 + 0.5
 
-    fig, axes = plt.subplots(2, img_count, figsize=(15, 5))
+    fig, axes = plt.subplots(2, img_count, figsize=(15, 7))
     for i in range(img_count):
         # Original images
         axes[0, i].imshow(images[i].permute(1, 2, 0).numpy())
@@ -183,5 +196,21 @@ def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='c
         axes[1, i].axis('off')
         axes[1, i].set_title("Reconstructed")
 
-    plt.tight_layout()
-    plt.show()
+    metadata_text = (
+        f"Training Metadata:\n"
+        f"Num Epochs: {num_epochs}\n"
+        f"Batch Size: {batch_size}\n"
+        f"Learning Rate: {learning_rate}\n"
+        f"Minimal Loss Achieved: {min_loss:.6f}" if min_loss is not None else "Minimal Loss Achieved: Not Provided"
+    )
+
+    plt.subplots_adjust(bottom=0.25)
+
+    plt.figtext(0.5, 0.02, metadata_text, wrap=True, horizontalalignment='center', fontsize=10, bbox=dict(facecolor='white', alpha=0.8))
+
+    # Save the plot to the "results" directory with a timestamped filename
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    result_path = f"results/reconstruction_{current_time}.png"
+    plt.savefig(result_path)
+    print(f"Reconstruction plot saved as {result_path}")
+    plt.close()

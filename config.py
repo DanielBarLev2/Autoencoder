@@ -5,9 +5,9 @@ import torch
 dataset_path = 'C:/dataset'
 
 # Hyperparameters
-epochs = 20 # Early Stop Condition is recommended
+epochs = 20 # (Early Stop Condition is on)
 batch_size = 32
-learning_rate = 0.0001
+learning_rate = 0.001
 patience = 2
 tolerance = 1e-4
 validation_size = 1000
