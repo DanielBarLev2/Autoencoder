@@ -1,3 +1,4 @@
+import os
 import torch
 import datetime
 import torch.nn as nn
@@ -16,7 +17,7 @@ def train_model(dataset_path,
                 patience=3,
                 tolerance=1e-4):
     """
-    Trains the Autoencoder model on the provided dataset.
+    Trains the Autoencoder model on the provided dataset and saves the model and training/validation loss plots.
 
     :param dataset_path: str
         Path to the dataset folder containing images.
@@ -32,28 +33,35 @@ def train_model(dataset_path,
         Device to use for training ('cpu' or 'cuda').
     :param print_every: int, optional (default=100)
         Interval for logging training progress. Set to 0 to disable.
-    :param patience: int, optional (default=5)
+    :param patience: int, optional (default=3)
         Number of epochs to wait for improvement in validation loss before stopping.
     :param tolerance: float, optional (default=1e-4)
-    Minimum change in validation loss to be considered as improvement.
+        Minimum change in validation loss to be considered as improvement.
     """
+    # Create output directories if they don't exist
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("plots", exist_ok=True)
+
     # Create data loaders
     train_loader, val_loader = create_dataloader(dataset_path, batch_size=batch_size)
 
     # Initialize the model, loss function, and optimizer
     model = Autoencoder(latent_dim=latent_dim).to(device)
-    # Mean Squared Error Loss
     criterion = nn.MSELoss()
-    # Adaptive learning rate optimization that utilizes momentum and RMSProp via first and second moments of gradients.
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    if print_every:
-        print("Starts training...")
+    # Initialize variables to track losses
+    train_losses = []
+    val_losses = []
 
+    # Early stopping variables
     best_val_loss = float('inf')
     epochs_without_significant_change = 0
 
-    ### Training loop ###
+    if print_every:
+        print("Starting training...")
+
+    # Training loop
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0
@@ -61,11 +69,11 @@ def train_model(dataset_path,
         for batch_idx, images in enumerate(train_loader):
             images = images.to(device)
 
-            ### Forward pass ###
+            # Forward pass
             reconstructed = model(images)
             loss = criterion(reconstructed, images)
 
-            ### Backward pass ###
+            # Backward pass
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -74,45 +82,60 @@ def train_model(dataset_path,
 
             if print_every and ((batch_idx + 1) % print_every == 0):
                 percent_complete = ((batch_idx + 1) / len(train_loader)) * 100
-                print(f"Epoch [{epoch + 1}/{num_epochs}],"
-                      f" {percent_complete:.2f}% Complete,"
-                      f" Loss: {loss.item():.6f}")
+                print(f"Epoch [{epoch + 1}/{num_epochs}], {percent_complete:.2f}% Complete, Loss: {loss.item():.6f}")
 
         train_loss /= len(train_loader)
+        train_losses.append(train_loss)
+        print(f"Epoch [{epoch + 1}/{num_epochs}] Training Loss: {train_loss:.6f}")
 
-        if print_every:
-            print(f"Epoch [{epoch + 1}/{num_epochs}] Training Loss: {train_loss:.4f}")
-
-        ### Validation ###
+        # Validation
         model.eval()
         val_loss = 0
         with torch.no_grad():
             for images in val_loader:
                 images = images.to(device)
-
                 reconstructed = model(images)
                 loss = criterion(reconstructed, images)
                 val_loss += loss.item()
 
         val_loss /= len(val_loader)
-        print(f"Epoch [{epoch + 1}/{num_epochs}] Validation Loss: {val_loss:.4f}")
+        val_losses.append(val_loss)
+        print(f"Epoch [{epoch + 1}/{num_epochs}] Validation Loss: {val_loss:.6f}")
 
-        ### Early Stop Conditions ###
+        # Early stopping
         if abs(val_loss - best_val_loss) > tolerance:
             best_val_loss = val_loss
             epochs_without_significant_change = 0
         else:
             epochs_without_significant_change += 1
+            print(f"No significant improvement for {epochs_without_significant_change} epoch(s).")
 
         if epochs_without_significant_change >= patience:
             print(f"Early stopping triggered. No significant improvement for {patience} consecutive epochs.")
             break
 
-    # Save the model with the current datetime in the filename
+    # Save the model on significant improvement
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"autoencoder_{current_time}.pth"
-    torch.save(model.state_dict(), filename)
-    print(f"Model saved as {filename}")
+    model_path = f"models/autoencoder_{current_time}.pth"
+    torch.save(model.state_dict(), model_path)
+    print(f"Validation loss improved. Model saved as {model_path}.")
+
+    # Plot and save training and validation losses
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    plot_path = f"plots/loss_plot_{current_time}.png"
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, len(train_losses) + 1), train_losses, label="Training Loss")
+    plt.plot(range(1, len(val_losses) + 1), val_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.grid()
+    plt.savefig(plot_path)
+    print(f"Loss plot saved as {plot_path}.")
+    plt.close()
+
+    print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
 
 
 def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='cpu', img_count=10):
@@ -136,9 +159,8 @@ def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='c
     # Load the model
     model = Autoencoder(latent_dim=latent_dim).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
-    model.eval()  # Set the model to evaluation mode
+    model.eval()
 
-    # Get a batch of images from the validation DataLoader
     images = next(iter(val_loader))
     images = images.to(device)
 
@@ -146,15 +168,13 @@ def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='c
     with torch.no_grad():
         reconstructed = model(images)
 
-    # Denormalize images if necessary (assumes [-1, 1] normalization was used)
-    images = images.cpu() * 0.5 + 0.5  # Convert to [0, 1]
+    images = images.cpu() * 0.5 + 0.5
     reconstructed = reconstructed.cpu() * 0.5 + 0.5
 
-    # Plot original and reconstructed images
     fig, axes = plt.subplots(2, img_count, figsize=(15, 5))
     for i in range(img_count):
         # Original images
-        axes[0, i].imshow(images[i].permute(1, 2, 0).numpy())  # Convert tensor to numpy
+        axes[0, i].imshow(images[i].permute(1, 2, 0).numpy())
         axes[0, i].axis('off')
         axes[0, i].set_title("Original")
 
