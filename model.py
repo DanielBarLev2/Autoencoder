@@ -13,7 +13,7 @@ def train_model(dataset_path,
                 latent_dim=256,
                 device='cpu',
                 print_every=100,
-                patience=5,
+                patience=3,
                 tolerance=1e-4):
     """
     Trains the Autoencoder model on the provided dataset.
