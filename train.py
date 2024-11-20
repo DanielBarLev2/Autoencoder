@@ -12,7 +12,9 @@ def train_model(dataset_path,
                 learning_rate=0.001,
                 latent_dim=256,
                 device='cpu',
-                print_every=100):
+                print_every=100,
+                patience=5,
+                tolerance=1e-4):
     """
     Trains the Autoencoder model on the provided dataset.
 
@@ -27,8 +29,13 @@ def train_model(dataset_path,
     :param latent_dim: int, optional (default=256)
         Dimensionality of the latent space.
     :param device: str, optional (default='cpu')
+        Device to use for training ('cpu' or 'cuda').
     :param print_every: int, optional (default=100)
-        prints logs of progress, to disable use print_every = 0.
+        Interval for logging training progress. Set to 0 to disable.
+    :param patience: int, optional (default=5)
+        Number of epochs to wait for improvement in validation loss before stopping.
+    :param tolerance: float, optional (default=1e-4)
+    Minimum change in validation loss to be considered as improvement.
     """
     # Create data loaders
     train_loader, val_loader = create_dataloader(dataset_path, batch_size=batch_size)
@@ -43,9 +50,11 @@ def train_model(dataset_path,
     if print_every:
         print("Starts training...")
 
-    # Training loop
+    best_val_loss = float('inf')
+    epochs_without_significant_change = 0
+
+    ### Training loop ###
     for epoch in range(num_epochs):
-        # Set model to training mode
         model.train()
         train_loss = 0
 
@@ -74,8 +83,8 @@ def train_model(dataset_path,
         if print_every:
             print(f"Epoch [{epoch + 1}/{num_epochs}] Training Loss: {train_loss:.4f}")
 
-        # Validation
-        model.eval()  # Set model to evaluation mode
+        ### Validation ###
+        model.eval()
         val_loss = 0
         with torch.no_grad():
             for images in val_loader:
@@ -87,6 +96,17 @@ def train_model(dataset_path,
 
         val_loss /= len(val_loader)
         print(f"Epoch [{epoch + 1}/{num_epochs}] Validation Loss: {val_loss:.4f}")
+
+        ### Early Stop Conditions ###
+        if abs(val_loss - best_val_loss) > tolerance:
+            best_val_loss = val_loss
+            epochs_without_significant_change = 0
+        else:
+            epochs_without_significant_change += 1
+
+        if epochs_without_significant_change >= patience:
+            print(f"Early stopping triggered. No significant improvement for {patience} consecutive epochs.")
+            break
 
     # Save the model with the current datetime in the filename
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
