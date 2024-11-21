@@ -8,7 +8,7 @@ def run_tests():
                                                batch_size=config.batch_size,
                                                learning_rate=config.learning_rate,
                                                device=config.device,
-                                               print_every=1000,
+                                               print_every=config.print_every,
                                                patience=config.patience,
                                                tolerance=config.tolerance)
 

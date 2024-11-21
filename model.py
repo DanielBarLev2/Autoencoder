@@ -59,7 +59,7 @@ def train_model(dataset_path,
     epochs_without_significant_change = 0
 
     if print_every:
-        print("Starting training...")
+        print(f'Starting training with {device}')
 
     # Training loop
     for epoch in range(num_epochs):
@@ -86,7 +86,8 @@ def train_model(dataset_path,
 
         train_loss /= len(train_loader)
         train_losses.append(train_loss)
-        print(f"Epoch [{epoch + 1}/{num_epochs}] Training Loss: {train_loss:.6f}")
+        if print_every:
+            print(f"Epoch [{epoch + 1}/{num_epochs}] Training Loss: {train_loss:.6f}")
 
         # Validation
         model.eval()
@@ -100,7 +101,8 @@ def train_model(dataset_path,
 
         val_loss /= len(val_loader)
         val_losses.append(val_loss)
-        print(f"Epoch [{epoch + 1}/{num_epochs}] Validation Loss: {val_loss:.6f}")
+        if print_every:
+            print(f"Epoch [{epoch + 1}/{num_epochs}] Validation Loss: {val_loss:.6f}")
 
         # Early stopping
         if abs(val_loss - best_val_loss) > tolerance:
@@ -108,17 +110,20 @@ def train_model(dataset_path,
             epochs_without_significant_change = 0
         else:
             epochs_without_significant_change += 1
-            print(f"No significant improvement for {epochs_without_significant_change} epoch(s).")
+            if print_every:
+                print(f"No significant improvement for {epochs_without_significant_change} epoch(s).")
 
         if epochs_without_significant_change >= patience:
-            print(f"Early stopping triggered. No significant improvement for {patience} consecutive epochs.")
+            if print_every:
+                print(f"Early stopping triggered. No significant improvement for {patience} consecutive epochs.")
             break
 
     # Save the model on significant improvement
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     model_path = f"models/autoencoder_{current_time}.pth"
     torch.save(model.state_dict(), model_path)
-    print(f"Validation loss improved. Model saved as {model_path}.")
+    if print_every:
+        print(f"Validation loss improved. Model saved as {model_path}.")
 
     # Plot and save training and validation losses
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -132,17 +137,26 @@ def train_model(dataset_path,
     plt.legend()
     plt.grid()
     plt.savefig(plot_path)
-    print(f"Loss plot saved as {plot_path}.")
+    if print_every:
+        print(f"Loss plot saved as {plot_path}.")
     plt.close()
 
-    print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
+    if print_every:
+        print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
 
     current_num_epochs = len(train_losses)
 
     return current_num_epochs, best_val_loss, model_path,
 
-def visualize_reconstruction(dataset_path, model_path, latent_dim=256, device='cpu', img_count=10,
-                             num_epochs=20, batch_size=16, learning_rate=0.001, min_loss=None):
+def visualize_reconstruction(dataset_path,
+                             model_path,
+                             latent_dim=256,
+                             device='cpu',
+                             img_count=10,
+                             num_epochs=20,
+                             batch_size=16,
+                             learning_rate=0.001,
+                             min_loss=None):
     """
     Visualizes the reconstruction of images using the trained Autoencoder model and saves the plot to the "results" folder.
 
