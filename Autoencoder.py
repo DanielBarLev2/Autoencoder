@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 class Autoencoder(nn.Module):
     """
         A convolutional Autoencoder for image reconstruction with Batch Normalization and Leaky ReLU activations.
@@ -23,6 +24,7 @@ class Autoencoder(nn.Module):
         - `latent_dim`: Controls the size of the compressed representation in the latent space.
         - `negative_slope`: Slope for the negative part of `LeakyReLU`.
         """
+
     def __init__(self, latent_dim=256, negative_slope=0.01):
         super(Autoencoder, self).__init__()
         # Encoder

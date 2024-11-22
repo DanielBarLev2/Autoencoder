@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from Autoencoder import Autoencoder
 from data_loader import create_dataloader
 
+
 def train_model(dataset_path,
                 num_epochs=20,
                 batch_size=16,
@@ -156,6 +157,7 @@ def train_model(dataset_path,
 
     return current_num_epochs, best_val_loss, model_path
 
+
 def visualize_reconstruction(dataset_path,
                              model_path,
                              latent_dim=256,
@@ -228,7 +230,8 @@ def visualize_reconstruction(dataset_path,
 
     plt.subplots_adjust(bottom=0.25)
 
-    plt.figtext(0.5, 0.02, metadata_text, wrap=True, horizontalalignment='center', fontsize=10, bbox=dict(facecolor='white', alpha=0.8))
+    plt.figtext(0.5, 0.02, metadata_text, wrap=True, horizontalalignment='center', fontsize=10,
+                bbox=dict(facecolor='white', alpha=0.8))
 
     # Save the plot to the "results" directory with a timestamped filename
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
