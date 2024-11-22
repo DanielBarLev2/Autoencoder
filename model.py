@@ -135,7 +135,15 @@ def train_model(dataset_path,
     plt.ylabel("Loss")
     plt.title("Training and Validation Loss")
     plt.legend()
-    plt.grid()
+
+    # Enable minor ticks for a more precise grid
+    plt.minorticks_on()
+
+    # Customize grid lines
+    plt.grid(which='major', linestyle='-', linewidth=0.75, alpha=0.8)  # Major grid
+    plt.grid(which='minor', linestyle='--', linewidth=0.5, alpha=0.5)  # Minor grid
+
+    # Save the plot
     plt.savefig(plot_path)
     if print_every:
         print(f"Loss plot saved as {plot_path}.")
@@ -146,7 +154,7 @@ def train_model(dataset_path,
 
     current_num_epochs = len(train_losses)
 
-    return current_num_epochs, best_val_loss, model_path,
+    return current_num_epochs, best_val_loss, model_path
 
 def visualize_reconstruction(dataset_path,
                              model_path,

@@ -60,6 +60,6 @@ def create_dataloader(dataset_path, val_size = 1000, batch_size = 16, img_size =
     val_dataset = Subset(dataset, val_indices)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
     return train_loader, val_loader
